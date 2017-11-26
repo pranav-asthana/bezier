@@ -20,8 +20,6 @@ using namespace std;
 
 vector<glm::vec2> controlPoints;
 vector<glm::vec3> curvePoints;
-// vector<glm::vec3> curveTangentPoints;
-// vector<glm::vec3> curveNormalPoints;
 bool change = true;
 glm::vec2 mousePos;
 int currentPointIndex;
@@ -35,53 +33,12 @@ void makeBezierSurface();
 glm::vec3 path(float t)
 {
     return glm::vec3(0, 10*cos(2*PI*t), 10*sin(2*PI*t));
-    // return glm::vec3(10*sin(2*PI*t), 0, 10*t);
 }
 
 glm::vec3 tangent(float t)
 {
     return glm::vec3(0, -10*sin(2*PI*t), 10*cos(2*PI*t));
-    // return glm::vec3(10*cos(2*PI*t), 0, 10);
 }
-
-glm::vec3 normal(float t)
-{
-    return glm::vec3(0, -10*cos(2*PI*t), -10*sin(2*PI*t));
-    // return glm::vec3(-2*sin(2*PI*t), 0, 0);
-}
-
-glm::vec3 binormal(float t)
-{
-    return glm::cross(tangent(t), normal(t));
-}
-
-// glm::vec3 curve_tangent(float t)
-// {
-//     int index = t * curveTangentPoints.size();
-//     // glm::vec3 tangent = curvePoints.at(index+1) - curvePoints.at(index);
-//     glm::vec3 tangent = curveTangentPoints.at(index);
-//     // printf("Curve tangent(%f): %f %f %f\n", t, tangent.x, tangent.y, tangent.z);
-//     // printf("------------\n");
-//     return glm::normalize(tangent);
-// }
-
-// glm::vec3 curve_normal(float t)
-// {
-//     // printf("(t=%f) ", t);
-//     int index = t * curveNormalPoints.size();
-//     // printf("Accessing normal at index=%d(/%d)\n", index, curveNormalPoints.size());
-//     glm::vec3 normal = glm::normalize(curveNormalPoints.at(index));
-//     // printf("Curve normal(%f): %f %f %f\n", t, normal.x, normal.y, normal.z);
-//     // printf("Done\n");
-//     return normal;
-//     // return glm::normalize(glm::cross(curve_tangent(t), glm::vec3(0, 0, 1)));
-// }
-
-// glm::vec3 curve_binormal(float t)
-// {
-//     // return glm::vec3(0, 0, 1);
-//     return glm::normalize(glm::cross(curve_tangent(t), curve_normal(t)));
-// }
 
 void addControlPoint(glm::vec2 P, int index = -1)
 {
@@ -239,8 +196,6 @@ void drawBezierCurve(vector<glm::vec2> controlPoints)
     }
 
     curvePoints.clear();
-    // curveTangentPoints.clear();
-    // curveNormalPoints.clear();
 
     for(float t = 0; t < 1; t += 0.001)
     {
@@ -248,51 +203,7 @@ void drawBezierCurve(vector<glm::vec2> controlPoints)
 
         curvePoints.push_back(glm::vec3(P.x, P.y, 1));
         drawPixel(P.x, P.y, 2);
-
-        // // Tangent calculation
-        // if (degree < 1)
-        //     continue;
-        // vector<glm::vec2> controlPoints_copy1(controlPoints);
-        // controlPoints_copy1.erase(controlPoints_copy1.begin());
-        //
-        // vector<glm::vec2> controlPoints_copy2(controlPoints);
-        // controlPoints_copy2.erase(controlPoints_copy2.begin() + controlPoints_copy2.size() - 1);
-        //
-        // glm::vec2 P1 = getCurvePoint(degree-1, 0, t, controlPoints_copy1);
-        // glm::vec2 P2 = getCurvePoint(degree-1, 0, t, controlPoints_copy2);
-        // glm::vec3 tangent  = (float)(degree+1) * glm::vec3(P1-P2, 1);
-        // curveTangentPoints.push_back(tangent);
-
-        // // Normal calculation
-        // if (degree < 2)
-        // {
-        //     // curveNormalPoints.push_back(glm::normalize(glm::cross(curve_tangent(t), glm::vec3(0, 0, 1))));
-        //     curveNormalPoints.push_back(glm::vec3(0, 1, 0));
-        //     continue;
-        // }
-        // vector<glm::vec2> controlPoints_copy3(controlPoints);
-        // controlPoints_copy3.erase(controlPoints_copy3.begin());
-        // controlPoints_copy3.erase(controlPoints_copy3.begin() + 1);
-        //
-        // vector<glm::vec2> controlPoints_copy4(controlPoints);
-        // controlPoints_copy4.erase(controlPoints_copy4.begin());
-        // controlPoints_copy4.erase(controlPoints_copy4.begin() + controlPoints_copy4.size() - 1);
-        //
-        // vector<glm::vec2> controlPoints_copy5(controlPoints);
-        // controlPoints_copy5.erase(controlPoints_copy5.begin() + controlPoints_copy5.size() - 1);
-        // controlPoints_copy5.erase(controlPoints_copy5.begin() + controlPoints_copy5.size() - 2);
-        //
-        // P1 = getCurvePoint(degree-2, 0, t, controlPoints_copy3);
-        // P2 = getCurvePoint(degree-2, 0, t, controlPoints_copy4);
-        // glm::vec2 P3 = getCurvePoint(degree-2, 0, t, controlPoints_copy5);
-        // glm::vec3 normal  = (float)(degree*(degree+1)) * glm::vec3(P1 - 2.0f*P2 + P3, 1);
-        // curveNormalPoints.push_back(normal);
     }
-}
-
-void printVertex(glm::vec3 P)
-{
-    printf("%f %f %f\n", P.x, P.y, P.z);
 }
 
 void makeBezierSurface()
@@ -301,7 +212,7 @@ void makeBezierSurface()
     int degree = controlPoints.size() - 1;
     if (degree > 0)
     {
-        int num_pieces = 40;
+        int num_pieces = 10;
         float step = 1.0f/(float)num_pieces;
 
         glm::vec3 p[num_pieces][num_pieces];
@@ -313,10 +224,6 @@ void makeBezierSurface()
             {
                 glm::mat4 T;
                 glm::vec3 axis_of_rotation = glm::vec3(1, 0,0);//binormal(t1);
-                // glm::vec3 curve_binormal_vec = curve_binormal(t2);
-                // printf("curve_binormal(%f): %f %f %f\n", t2, curve_binormal_vec.x, curve_binormal_vec.y, curve_binormal_vec.z);
-
-                // float cosine = glm::dot(glm::normalize(curve_binormal_vec), glm::normalize(tangent(t1)));
                 float cosine = glm::dot(glm::vec3(0, 0, 1), glm::normalize(tangent(t1)));
 
                 if (cosine < -1.0f)
@@ -331,8 +238,6 @@ void makeBezierSurface()
                 // printf("Angle: cos(%f) = %f\n", 180/PI*angle, cosine);
                 T = glm::translate(T, path_var); // translate to right position
                 T = glm::rotate(T, angle, axis_of_rotation);
-                // printf("Number of points: %d\n", curvePoints.size());
-                // printf("curve access at (t2=%f) %d\n", t2, (int)t2*curvePoints.size());
                 glm::vec3 curve_var = glm::vec3(curvePoints.at((int)(t2*curvePoints.size())));
                 curve_var = glm::vec3(T*glm::vec4(curve_var, 1));
                 // printf("(%d %d) %f %f %f\n",(int)(t2*num_pieces), (int)(t1*num_pieces), curve_var.x, curve_var.y, curve_var.z);
@@ -347,16 +252,8 @@ void makeBezierSurface()
         {
             for (i = 0; i < (num_pieces); i++)
             {
-                // printf("(%d %d)\n", i, j);
-                // printVertex(p[i][j]);
-                // printVertex(p[i+1][j]);
-                // printVertex(p[i+1][j+1]);
-                // printVertex(p[i][j+1]);
-                // printf("--------------\n");
-
                 if (i == (num_pieces-1) && j != (num_pieces-1))
                 {
-                    surface.addQuad(p[i][j], p[0][j], p[0][j+1], p[i][j+1]);
                     continue;
                 }
 
@@ -368,7 +265,6 @@ void makeBezierSurface()
 
                 if (i == (num_pieces-1) || j == (num_pieces-1))
                 {
-                    surface.addQuad(p[i][j], p[0][j], p[0][0], p[i][0]);
                     continue;
                 }
 
