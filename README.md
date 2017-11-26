@@ -41,6 +41,27 @@ It allows us to change material properties, lighting, color, etc.
 We can also view the mesh in different modes, such as wireframe.
 ![wireframe](results/wireframe.png)
 
+### Build instructions
+To build, execute the following commands from the project root directory:
+```
+mkdir build;
+cd build;
+cmake ..;
+make;
+```
+
+To run, execute:
+```
+./bezier
+```
+
+To save the surface of revolution as an OFF file, hit *`spacebar`* after defining the bezier curve.
+
+To visualize the bezier curve using geomview, execute (from the build directory):
+```
+geomview -c "(load bezier.off)";
+```
+
 ### Results
 ![](results/1.png)
 
