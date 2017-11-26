@@ -35,6 +35,7 @@ Once a mesh is generated, as described above, it can be saved to file. There are
 We used a software called **Geomview** for visualizing the OFF file of the mesh. It reconstructs and renders the mesh from the OFF file.
 
 It allows us to change material properties, lighting, color, etc.
+
 ![geomview](results/geomview.png)
 
 We can also view the mesh in different modes, such as wireframe.
