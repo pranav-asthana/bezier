@@ -18,16 +18,47 @@ using namespace std;
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
 
-vector<glm::vec2> controlPoints;
-vector<glm::vec3> curvePoints;
-bool change = true;
-glm::vec2 mousePos;
-int currentPointIndex;
-bool mouseDown = false;
+vector<glm::vec2> controlPoints; // Vertices of control polygon
+vector<glm::vec3> curvePoints; // Points on the bezier curve
+glm::vec2 mousePos; // Mouse position on screen(x-y plane)
+int currentPointIndex; // Control point index being modified (moved)
+bool mouseDown = false; // Used for checking whether to add a point or drag it
+// Debouncing a mouse click
 clock_t begin_time;
 clock_t last_save;
 float time_diff;
 
+// Callbacks for user input (mouse and keyboard)
+void mouse_callback(GLFWwindow* window, int button, int action, int mods);
+void processInput(GLFWwindow *window);
+
+// Plot a pixel, given coordinates
+void drawPixel(GLfloat x, GLfloat y, int pointSize);
+
+void addControlPoint(glm::vec2 P, int index = -1); // Add a new control point
+void deleteControlPoint(int index); // Delete a control point
+
+// Find the closest point to a given 2D vector. (Snap to a point while selecting for editing the curve)
+int getIndexOfClosestPoint(glm::vec2 P);
+
+// Linear interpolation between 2 points given interpolation parameter, t
+glm::vec2 Lerp(glm::vec2 A, glm::vec2 B, float t);
+
+// Calculate the coordinates of a bezier curver with given degree, interpolation parameter and control points
+// by De Casteljau algorithm
+glm::vec2 getCurvePoint(int depth, int i, double t, vector<glm::vec2> controlPoints);
+
+// Function that calls other functions and draws a 2D bezier curve, given the control points
+void drawBezierCurve(vector<glm::vec2> controlPoints);
+
+// Parametric equation of circle of revolution for making surface
+glm::vec3 path(float t);
+
+// Parametric equation of tangent to the circle of revolution
+glm::vec3 tangent(float t);
+
+// Make the surface of revolution from the bezier curve and save it as an OFF file
+// Hit spacebar to create and save the surface
 void makeBezierSurface();
 
 glm::vec3 path(float t)
@@ -40,13 +71,12 @@ glm::vec3 tangent(float t)
     return glm::vec3(0, -10*sin(2*PI*t), 10*cos(2*PI*t));
 }
 
-void addControlPoint(glm::vec2 P, int index = -1)
+void addControlPoint(glm::vec2 P, int index)
 {
     if (index < 0 || index >= controlPoints.size())
         controlPoints.push_back(P);
     else if (index < controlPoints.size())
         controlPoints.insert(controlPoints.begin() + index, P);
-    change = true;
 }
 
 void deleteControlPoint(int index)
@@ -54,7 +84,6 @@ void deleteControlPoint(int index)
     if (index > -1)
     {
         controlPoints.erase(controlPoints.begin() + index);
-        change = true;
     }
 }
 
@@ -100,12 +129,6 @@ void mouse_callback(GLFWwindow* window, int button, int action, int mods)
 
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-}
-
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -145,15 +168,11 @@ void processInput(GLFWwindow *window)
     }
 }
 
-
 void drawPixel(GLfloat x, GLfloat y, int pointSize)
 {
     GLfloat pointVertex[] = {x, y};
 
-    GLfloat red = 0;
-    GLfloat green = 1;
-    GLfloat blue =0;
-    GLfloat color_vector[] = {red, green, blue};
+    GLfloat color_vector[] = {0, 1, 0};
 
     glColorPointer(3, GL_FLOAT, 0, color_vector);
 
@@ -177,6 +196,7 @@ glm::vec2 getCurvePoint(int depth, int i, double t, vector<glm::vec2> controlPoi
 {
    if(depth == 0) return controlPoints.at(i);
 
+   // Recursive calls (De Casteljau algorithm)
    glm::vec2 p1 = getCurvePoint(depth - 1, i, t, controlPoints);
    glm::vec2 p2 = getCurvePoint(depth - 1, i + 1, t, controlPoints);
 
@@ -190,53 +210,67 @@ void drawBezierCurve(vector<glm::vec2> controlPoints)
     if (degree < 0)
         return;
 
+    // Draw the control points of large size
     for (int i = 0; i <= degree; i++)
     {
         drawPixel(controlPoints.at(i).x, controlPoints.at(i).y, 10);
     }
 
-    curvePoints.clear();
+    curvePoints.clear(); // Reset the curve points vector (Since recalculating)
 
     for(float t = 0; t < 1; t += 0.001)
     {
+        // Get the point on the curve for values of t ranging from 0 to 1 with a step of 0.001
         glm::vec2 P = getCurvePoint(degree, 0, t, controlPoints);
 
-        curvePoints.push_back(glm::vec3(P.x, P.y, 1));
-        drawPixel(P.x, P.y, 2);
+        curvePoints.push_back(glm::vec3(P.x, P.y, 1)); // Save that point in the vector
+        drawPixel(P.x, P.y, 2); // Draw the point on the screen
     }
 }
 
 void makeBezierSurface()
 {
-    printf("Making surface\n");
+    printf("Making surface...\n");
     int degree = controlPoints.size() - 1;
     if (degree > 0)
     {
-        int num_pieces = 10;
+        int num_pieces = 10; // Number of sections to divide surface into
         float step = 1.0f/(float)num_pieces;
 
+        // 2D matrix to store mesh of the surface.
+        // Will later write this as triangles.
         glm::vec3 p[num_pieces][num_pieces];
+
         float angle;
+
         for (float t1 = 0; t1 <= 1; t1+=step)
         {
             glm::vec3 path_var = path(t1);
             for (float t2 = 0; t2 <= 1; t2+=step)
             {
                 glm::mat4 T;
-                glm::vec3 axis_of_rotation = glm::vec3(1, 0,0);//binormal(t1);
+                glm::vec3 axis_of_rotation = glm::vec3(1, 0,0); // binormal(t1);
                 float cosine = glm::dot(glm::vec3(0, 0, 1), glm::normalize(tangent(t1)));
+
+                // C++ acos returs principal value of cos, ie, [0, 180]
+                // We need [0, 360] or [-180, 180]
+                // For this we calculate the cross product of
+                // curve binormal and tangent, and flip sign of angle accordingly
 
                 if (cosine < -1.0f)
                     cosine = -1.0f;
                 else if (cosine > 1.0f)
                     cosine = 1.0f;
                 angle = acos(cosine);
+
                 glm::vec3 cross = glm::cross(glm::vec3(0, 0, 1), tangent(t1));
                 float dir = glm::dot(cross, axis_of_rotation);
                 if (dir < 0)
                     angle = -angle;
                 // printf("Angle: cos(%f) = %f\n", 180/PI*angle, cosine);
-                T = glm::translate(T, path_var); // translate to right position
+
+                // translate by path coordinates and rotate by calculated angle
+                T = glm::translate(T, path_var);
                 T = glm::rotate(T, angle, axis_of_rotation);
                 glm::vec3 curve_var = glm::vec3(curvePoints.at((int)(t2*curvePoints.size())));
                 curve_var = glm::vec3(T*glm::vec4(curve_var, 1));
@@ -246,44 +280,34 @@ void makeBezierSurface()
             }
         }
 
-        Mesh surface = Mesh();
+        Mesh surface = Mesh(); // Initialize empty triangle mesh
         int i, j;
         for (j = 0; j < (num_pieces); j++)
         {
             for (i = 0; i < (num_pieces); i++)
             {
-                if (i == (num_pieces-1) && j != (num_pieces-1))
-                {
-                    continue;
-                }
-
                 if (i != (num_pieces-1) && j == (num_pieces-1))
                 {
+                    // To add the last section of the surface of revolution
                     surface.addQuad(p[i][j], p[i+1][j], p[i+1][0], p[i][0]);
                     continue;
                 }
 
                 if (i == (num_pieces-1) || j == (num_pieces-1))
                 {
+                    // Invalid values, so continue
                     continue;
                 }
 
+                // Add all quads(2 triangles), except when i = num_pieces-1
                 surface.addQuad(p[i][j], p[i+1][j], p[i+1][j+1], p[i][j+1]);
             }
         }
 
         int len = (surface.getVertices()).size();
         // printf("%d\n", len);
-        surface.writeToOFF("bezier");
-        // vector<GLfloat> color_surface = getColorVector(glm::vec3(1, 0, 0), len/6);
+        surface.writeToOFF("bezier"); // Mesh function to write OFF file
     }
-}
-
-
-
-void demoPrimitiveDrawing()
-{
-    drawBezierCurve(controlPoints);
 }
 
 int main()
@@ -307,9 +331,6 @@ int main()
     glfwMakeContextCurrent(window);
 
     glfwSetMouseButtonCallback(window, mouse_callback);
-    // glfwSetScrollCallback(window, scroll_callback);
-    // // tell GLFW to capture our mouse
-    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glViewport(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
     glMatrixMode(GL_PROJECTION);
@@ -323,12 +344,11 @@ int main()
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT);
-        // if (change)
-        {
-            demoPrimitiveDrawing();
-            change = false;
-            glfwSwapBuffers(window);
-        }
+
+        // Function call to draw bezier curve
+        drawBezierCurve(controlPoints);
+
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 

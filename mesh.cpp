@@ -56,11 +56,14 @@ void Mesh::transform(glm::mat4 transformation)
     for (int i=0; i < triangles.size(); i++)
     {
         Triangle T = triangles.at(i);
+        // Transform each vertex
         glm::vec4 A1 = transformation * glm::vec4(T.A, 1);
         glm::vec4 B1 = transformation * glm::vec4(T.B, 1);
         glm::vec4 C1 = transformation * glm::vec4(T.C, 1);
         mesh.addTriangle(glm::vec3(A1), glm::vec3(B1), glm::vec3(C1));
     }
+    // Swap the local mesh with the callers mesh
+    // (essentially the vertices, triangles and normals)
     this->vertices = mesh.getVertices();
     this->triangles = mesh.getTriangles();
     this->normals = mesh.getNormals();
@@ -70,6 +73,7 @@ void Mesh::joinMesh(Mesh mesh)
 {
     vector<GLfloat> vertices2 = mesh.getVertices();
     vector<Triangle> triangles2 = mesh.getTriangles();
+    vector<glm::vec3> normals2 = mesh.getNormals();
 
     vector<GLfloat> new_vertices;
     new_vertices.reserve(vertices.size() + vertices2.size());
@@ -81,14 +85,20 @@ void Mesh::joinMesh(Mesh mesh)
     new_triangles.insert(new_triangles.end(), triangles.begin(), triangles.end());
     new_triangles.insert(new_triangles.end(), triangles2.begin(), triangles2.end());
 
+    vector<glm::vec3> new_normals;
+    new_normals.reserve(normals.size() + normals2.size());
+    new_normals.insert(new_normals.end(), normals.begin(), normals.end());
+    new_normals.insert(new_normals.end(), normals2.begin(), normals2.end());
+
     vertices = new_vertices;
     triangles = new_triangles;
+    normals = new_normals;
 }
 
 void Mesh::writeToOFF(string filename)
 {
     ofstream OFFfile(filename + ".off");
-    cout << "Writing this to a file." << endl;
+    cout << "Writing OFF file." << endl;
     // this.triangles; has all triangles
     uint num_triangles = triangles.size();
     OFFfile << "OFF\n";
